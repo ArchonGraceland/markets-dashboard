@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/quotes.js": {
+      "runtime": "@vercel/node@3"
+    }
+  }
+}

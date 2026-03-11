@@ -108,63 +108,6 @@
   }
   .live-dot.disconnected { background: #ef4444; animation: none; }
   .live-dot.connecting   { background: #fbbf24; }
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
-  }
-
-  /* ─── API KEY BAR ─── */
-  .conn-bar {
-    font-family: 'Roboto', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    padding: 10px 32px;
-    text-align: center;
-    display: none;
-  }
-  .conn-bar.needs-key {
-    display: block;
-    background: #fef3c7;
-    color: #92400e;
-    border-bottom: 1px solid #f59e0b;
-  }
-  .conn-bar.error {
-    display: block;
-    background: #fef2f2;
-    color: #991b1b;
-    border-bottom: 1px solid #ef4444;
-  }
-  .conn-bar.connected {
-    display: block;
-    background: #f0fdf4;
-    color: #166534;
-    border-bottom: 1px solid #22c55e;
-    animation: fadeOut 3s 2s forwards;
-  }
-  @keyframes fadeOut { to { opacity:0; height:0; padding:0; overflow:hidden; } }
-  .conn-bar input {
-    font-family: 'Roboto', sans-serif;
-    font-size: 13px;
-    padding: 4px 12px;
-    border: 1px solid #d4a574;
-    border-radius: 4px;
-    margin: 0 8px;
-    width: 260px;
-    background: white;
-  }
-  .conn-bar button {
-    font-family: 'Roboto', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 5px 16px;
-    border: none;
-    border-radius: 4px;
-    background: var(--crimson);
-    color: white;
-    cursor: pointer;
-  }
-  .conn-bar button:hover { background: var(--crimson-dk); }
 
   /* ─── MAIN ─── */
   main { padding: 40px 0 60px; }
@@ -461,7 +404,6 @@
     .card-price { font-size: 32px; }
     .rate-value { font-size: 40px; }
     .rate-details { grid-template-columns: 1fr; }
-    .conn-bar input { width: 180px; }
   }
 </style>
 </head>
@@ -474,21 +416,14 @@
     <h1>Financial Dashboard</h1>
     <div class="header-sub">
       <span class="live-dot connecting" id="statusDot"></span>
-      <span id="connLabel">Connecting…</span>
+      <span id="connLabel">Loading…</span>
       <span style="color:rgba(255,255,255,0.4);">·</span>
       <span id="dateDisplay"></span>
       <span style="color:rgba(255,255,255,0.4);">·</span>
-      <span id="lastUpdate" style="color:rgba(255,255,255,0.5);">Waiting for data…</span>
+      <span id="lastUpdate" style="color:rgba(255,255,255,0.5);">Polling every 30s via Yahoo Finance</span>
     </div>
   </div>
 </header>
-
-<!-- ═══ API KEY BAR ═══ -->
-<div class="conn-bar needs-key" id="connBar">
-  Enter your free <a href="https://finnhub.io/register" target="_blank" style="color:inherit;text-decoration:underline;font-weight:700;">Finnhub API key</a> to enable live data:
-  <input type="text" id="apiKeyInput" placeholder="paste your API key here…" spellcheck="false" autocomplete="off">
-  <button onclick="connectWithKey()">Connect</button>
-</div>
 
 <!-- ═══ MAIN ═══ -->
 <main>
@@ -738,63 +673,42 @@
 <footer class="site-footer">
   <div class="wrap">
     <div class="footer-inner">
-      <strong>Live data powered by <a href="https://finnhub.io" target="_blank" style="color:rgba(255,255,255,0.8);">Finnhub</a> + Yahoo Finance.</strong> Prices may be delayed. Not investment advice.<br>
-      Index data (SPX, VIX, yields) via Yahoo Finance. Finnhub WebSocket for real-time ETF trades. Policy rates from FRED, NY Fed, ECB.<br>
-      Sources: FRED (St. Louis Fed), NY Fed, Federal Reserve H.15, ECB, CBOE, CME FedWatch, SOFRRate.com.
+      <strong>Live data powered by Yahoo Finance.</strong> Prices may be delayed. Not investment advice. Refreshes every 30 seconds.<br>
+      Index data: ^GSPC (SPX), ^VIX, ^TNX (10Y yield), ^TYX (30Y yield), ^IRX (4W yield). Policy rates from FRED, NY Fed, ECB.<br>
+      Sources: Yahoo Finance, FRED (St. Louis Fed), NY Fed, Federal Reserve H.15, ECB, CBOE, CME FedWatch, SOFRRate.com.
     </div>
   </div>
 </footer>
 
 <script>
 /* ════════════════════════════════════════════════════════════════════
-   HYBRID DATA ENGINE
+   YAHOO FINANCE DATA ENGINE
    ──────────────────────────────────────────────────────────────────
-   Layer 1: /api/quotes  (Vercel serverless → Yahoo Finance)
-     • Real index values: ^GSPC (SPX), ^VIX, ^TNX (10Y), ^TYX (30Y), ^IRX (4W)
-     • No CORS issues — server-side proxy
-     • Polls every 30 seconds
-
-   Layer 2: Finnhub WebSocket (optional, if API key provided)
-     • Real-time ETF trades: SPY, VIXY
-     • Overlays live tick data on SPX/VIX cards for sub-second updates
-     • Falls back gracefully if no key is entered
+   Uses /api/quotes (Vercel serverless → Yahoo Finance) for real
+   index values. No API key required. Polls every 30 seconds.
 
    Card mapping:
-     SPX   → ^GSPC from Yahoo (primary), SPY×10 from Finnhub WS (live ticks)
-     VIX   → ^VIX from Yahoo (primary), VIXY from Finnhub WS (direction only)
-     ES=F  → ^GSPC from Yahoo (same as SPX for now)
-     US10Y → ^TNX from Yahoo (actual yield ÷ 10 — Yahoo reports ×10)
-     US30Y → ^TYX from Yahoo (actual yield ÷ 10)
-     US4W  → ^IRX from Yahoo (actual yield ÷ 10)
+     SPX   → ^GSPC   (S&P 500 Index)
+     VIX   → ^VIX    (CBOE Volatility Index)
+     ES    → ^GSPC   (mirrors SPX — true futures not on Yahoo free)
+     US10Y → ^TNX    (10-Year Treasury Yield)
+     US30Y → ^TYX    (30-Year Treasury Yield)
+     US4W  → ^IRX    (13-Week Treasury Bill Yield)
    ════════════════════════════════════════════════════════════════════ */
 
-const YAHOO_MAP = {
-  SPX:   { yf: '^GSPC', isYield: false, yieldDiv: 1 },
-  VIX:   { yf: '^VIX',  isYield: false, yieldDiv: 1 },
-  ES:    { yf: '^GSPC', isYield: false, yieldDiv: 1 },
-  US10Y: { yf: '^TNX',  isYield: true,  yieldDiv: 1 },  // Yahoo ^TNX is already in % (e.g. 4.19)
-  US30Y: { yf: '^TYX',  isYield: true,  yieldDiv: 1 },
-  US4W:  { yf: '^IRX',  isYield: true,  yieldDiv: 1 },
+const CARD_MAP = {
+  SPX:   { yf: '^GSPC', isYield: false },
+  VIX:   { yf: '^VIX',  isYield: false },
+  ES:    { yf: '^GSPC', isYield: false },
+  US10Y: { yf: '^TNX',  isYield: true  },
+  US30Y: { yf: '^TYX',  isYield: true  },
+  US4W:  { yf: '^IRX',  isYield: true  },
 };
-
-const FINNHUB_WS_SYMBOLS = ['SPY', 'VIXY'];
-const FINNHUB_BASE = 'https://finnhub.io/api/v1';
-
-// Which Finnhub WS symbol maps to which card (for live tick overlay)
-const WS_OVERLAY = {
-  SPY:  { cards: ['SPX', 'ES'], mult: 10 },
-  VIXY: { cards: ['VIX'], mult: 1 },
-};
-
-let API_KEY = localStorage.getItem('finnhub_key') || '';
-let ws = null;
-let reconnectAttempts = 0;
-let reconnectTimer = null;
 
 // State per card
-const cardState = {};
-Object.keys(YAHOO_MAP).forEach(id => {
-  cardState[id] = { price: null, prevClose: null, high52: null, low52: null, change: null, changePct: null };
+const state = {};
+Object.keys(CARD_MAP).forEach(id => {
+  state[id] = { price: null, prevClose: null, high52: null, low52: null, change: null, changePct: null };
 });
 
 const $ = sel => document.querySelector(sel);
@@ -803,58 +717,25 @@ const $ = sel => document.querySelector(sel);
 document.getElementById('dateDisplay').textContent =
   new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
-// ── Init ──
-// Always start Yahoo Finance polling (no key needed)
-startYahooFeed();
+// Start immediately
+fetchQuotes();
+setInterval(fetchQuotes, 30000);
 
-// Optionally start Finnhub for real-time ticks
-if (API_KEY) {
-  $('#connBar').style.display = 'none';
-  startFinnhubWS();
-} else {
-  // Show key bar but mark as optional
-  $('#connBar').innerHTML =
-    '<span style="margin-right:4px">📡</span> Index data loading via Yahoo Finance. ' +
-    'For real-time tick updates, optionally add a free ' +
-    '<a href="https://finnhub.io/register" target="_blank" style="color:inherit;text-decoration:underline;font-weight:700;">Finnhub API key</a>: ' +
-    '<input type="text" id="apiKeyInput" placeholder="optional — paste key here" spellcheck="false" autocomplete="off" style="font-family:Roboto,sans-serif;font-size:13px;padding:4px 12px;border:1px solid #d4a574;border-radius:4px;margin:0 8px;width:220px;background:white;"> ' +
-    '<button onclick="connectWithKey()" style="font-family:Roboto,sans-serif;font-size:12px;font-weight:700;padding:5px 16px;border:none;border-radius:4px;background:#1a3a6b;color:white;cursor:pointer;">Connect</button>';
-}
-
-function connectWithKey() {
-  const input = $('#apiKeyInput');
-  if (!input) return;
-  const key = input.value.trim();
-  if (!key) { input.focus(); return; }
-  API_KEY = key;
-  localStorage.setItem('finnhub_key', key);
-  $('#connBar').className = 'conn-bar connected';
-  $('#connBar').textContent = 'Finnhub connected — live ticks enabled';
-  startFinnhubWS();
-}
-
-function setStatus(mode, label) {
-  $('#statusDot').className = 'live-dot ' + (mode === 'live' ? '' : mode);
-  $('#connLabel').textContent = label || '';
-}
-
-/* ═══════════════════════════════════════
-   LAYER 1: Yahoo Finance via /api/quotes
-   ═══════════════════════════════════════ */
-
-async function fetchYahooQuotes() {
+/* ═══ Fetch from /api/quotes ═══ */
+async function fetchQuotes() {
+  setStatus('connecting', 'Updating…');
   try {
-    const symbols = [...new Set(Object.values(YAHOO_MAP).map(m => m.yf))].join(',');
+    const symbols = [...new Set(Object.values(CARD_MAP).map(m => m.yf))].join(',');
     const r = await fetch(`/api/quotes?symbols=${encodeURIComponent(symbols)}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
 
-    // Map Yahoo results to card state
-    Object.entries(YAHOO_MAP).forEach(([cardId, cfg]) => {
+    Object.entries(CARD_MAP).forEach(([cardId, cfg]) => {
       const yf = data[cfg.yf];
       if (!yf || yf.error) return;
 
-      const s = cardState[cardId];
+      const s = state[cardId];
+      const oldPrice = s.price;
       s.price = yf.price;
       s.prevClose = yf.previousClose;
       s.change = yf.change;
@@ -862,90 +743,27 @@ async function fetchYahooQuotes() {
       if (yf.fiftyTwoWeekHigh) s.high52 = yf.fiftyTwoWeekHigh;
       if (yf.fiftyTwoWeekLow)  s.low52  = yf.fiftyTwoWeekLow;
 
-      renderCard(cardId);
+      renderCard(cardId, oldPrice);
     });
 
     setStatus('live', 'Live');
-    $('#lastUpdate').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    $('#lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
   } catch (e) {
-    console.warn('Yahoo fetch error:', e);
-    setStatus('connecting', 'Retrying…');
+    console.warn('Fetch error:', e);
+    setStatus('disconnected', 'Error — retrying…');
   }
 }
 
-function startYahooFeed() {
-  setStatus('connecting', 'Loading…');
-  fetchYahooQuotes();
-  // Poll every 30 seconds
-  setInterval(fetchYahooQuotes, 30000);
+function setStatus(mode, label) {
+  $('#statusDot').className = 'live-dot ' + (mode === 'live' ? '' : mode);
+  $('#connLabel').textContent = label || '';
 }
 
-/* ═══════════════════════════════════════
-   LAYER 2: Finnhub WebSocket (optional)
-   ═══════════════════════════════════════ */
-
-function startFinnhubWS() {
-  if (!API_KEY) return;
-  if (ws) try { ws.close(); } catch(e){}
-
-  ws = new WebSocket(`wss://ws.finnhub.io?token=${API_KEY}`);
-
-  ws.onopen = () => {
-    reconnectAttempts = 0;
-    FINNHUB_WS_SYMBOLS.forEach(s => ws.send(JSON.stringify({ type:'subscribe', symbol:s })));
-  };
-
-  ws.onmessage = (ev) => {
-    try {
-      const msg = JSON.parse(ev.data);
-      if (msg.type === 'trade' && msg.data) {
-        const latest = {};
-        msg.data.forEach(t => { latest[t.s] = t; });
-
-        Object.entries(latest).forEach(([sym, trade]) => {
-          const overlay = WS_OVERLAY[sym];
-          if (!overlay) return;
-
-          overlay.cards.forEach(cardId => {
-            const s = cardState[cardId];
-            const cfg = YAHOO_MAP[cardId];
-
-            // Only overlay if we already have Yahoo data as baseline
-            if (!s.prevClose) return;
-
-            // For non-yield cards, derive price from ETF × multiplier
-            if (!cfg.isYield) {
-              const oldPrice = s.price;
-              s.price = trade.p * overlay.mult;
-              s.change = s.price - (s.prevClose || s.price);
-              s.changePct = s.prevClose ? (s.change / s.prevClose) * 100 : 0;
-              renderCard(cardId, oldPrice);
-            }
-          });
-        });
-
-        $('#lastUpdate').textContent = 'Last tick: ' + new Date().toLocaleTimeString();
-      }
-    } catch(e) {}
-  };
-
-  ws.onerror = () => {};
-  ws.onclose = (ev) => {
-    if (ev.code === 4003 || ev.code === 403) return; // bad key, don't retry
-    reconnectAttempts++;
-    const delay = Math.min(1000 * 2**reconnectAttempts, 30000);
-    reconnectTimer = setTimeout(startFinnhubWS, delay);
-  };
-}
-
-/* ═══════════════════════════════════════
-   UI RENDERING
-   ═══════════════════════════════════════ */
-
+/* ═══ Render ═══ */
 function renderCard(id, oldPrice) {
-  const s = cardState[id];
-  const cfg = YAHOO_MAP[id];
+  const s = state[id];
+  const cfg = CARD_MAP[id];
   if (!s.price) return;
 
   const priceEl  = $(`[data-price="${id}"]`);
@@ -954,10 +772,8 @@ function renderCard(id, oldPrice) {
 
   /* ── Yield cards ── */
   if (cfg.isYield) {
-    // Yahoo ^TNX, ^TYX, ^IRX report values like 4.19, 4.80, 3.70
     const yieldVal = s.price;
-    const dec = yieldVal < 1 ? 3 : 3;
-    priceEl.innerHTML = yieldVal.toFixed(dec) + '<span class="unit">%</span>';
+    priceEl.innerHTML = yieldVal.toFixed(3) + '<span class="unit">%</span>';
 
     if (s.change !== null && changeEl) {
       const up = s.change >= 0;
@@ -967,11 +783,10 @@ function renderCard(id, oldPrice) {
       changeEl.innerHTML = `
         <span>${sign}${Math.abs(s.change).toFixed(3)}</span>
         <span class="chg-pill">${sign}${Math.abs(s.changePct).toFixed(2)}%</span>
-        <span class="card-context">${timeStr()} · Live</span>
+        <span class="card-context">${timeStr()}</span>
       `;
     }
 
-    // Range bar for yields
     if (s.high52 && s.low52) {
       const range = s.high52 - s.low52;
       if (range > 0) {
@@ -987,18 +802,16 @@ function renderCard(id, oldPrice) {
 
   /* ── Equity / Vol / Futures cards ── */
   const price = s.price;
-  const oldText = priceEl.textContent;
   const newText = fmtPrice(price);
   priceEl.textContent = newText;
 
-  // Flash animation on WebSocket tick
+  // Flash on change
   if (oldPrice && oldPrice !== price) {
     priceEl.classList.remove('flash-up', 'flash-down');
     void priceEl.offsetWidth;
     priceEl.classList.add(price > oldPrice ? 'flash-up' : 'flash-down');
   }
 
-  // Change line
   if (s.change !== null && changeEl) {
     const up = s.change >= 0;
     const sign = up ? '+' : '−';
@@ -1006,11 +819,10 @@ function renderCard(id, oldPrice) {
     changeEl.innerHTML = `
       <span>${sign}${Math.abs(s.change).toFixed(2)}</span>
       <span class="chg-pill">${sign}${Math.abs(s.changePct).toFixed(2)}%</span>
-      <span class="card-context">${timeStr()} · Live</span>
+      <span class="card-context">${timeStr()}</span>
     `;
   }
 
-  // Range bar
   if (s.high52 && s.low52) {
     const lo = s.low52, hi = s.high52;
     const loEl = $(`[data-rlo="${id}"]`);
@@ -1037,11 +849,6 @@ function fmtPrice(n, dec) {
 function timeStr() {
   return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
 }
-
-window.addEventListener('beforeunload', () => {
-  if (ws) ws.close();
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-});
 </script>
 
 </body>

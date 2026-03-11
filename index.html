@@ -6,13 +6,6 @@
 <title>Markets Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  /* ═══════════════════════════════════════════════════════
-     MARKETS DASHBOARD — CLEAN INSTITUTIONAL DESIGN
-     Fonts:   Roboto (UI/wayfinding) + Crimson Text (body/display)
-     Colors:  Navy #1a3a6b, white #fff, near-black #1a1a1a
-     WCAG AA throughout; left-aligned; generous spacing
-  ═══════════════════════════════════════════════════════ */
-
   :root {
     --crimson:     #1a3a6b;
     --crimson-dk:  #112a4f;
@@ -111,10 +104,74 @@
     display: inline-block;
     animation: blink 2.5s ease-in-out infinite;
   }
+  .live-dot.disconnected {
+    background: #ef4444;
+    animation: none;
+  }
+  .live-dot.connecting {
+    background: #fbbf24;
+  }
   @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.35; }
   }
+
+  /* ─── CONNECTION STATUS BAR ─── */
+  .conn-bar {
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 8px 32px;
+    text-align: center;
+    display: none;
+  }
+  .conn-bar.needs-key {
+    display: block;
+    background: #fef3c7;
+    color: #92400e;
+    border-bottom: 1px solid #f59e0b;
+  }
+  .conn-bar.error {
+    display: block;
+    background: #fef2f2;
+    color: #991b1b;
+    border-bottom: 1px solid #ef4444;
+  }
+  .conn-bar.connected {
+    display: block;
+    background: #f0fdf4;
+    color: #166534;
+    border-bottom: 1px solid #22c55e;
+    animation: fadeOut 3s 2s forwards;
+  }
+  @keyframes fadeOut {
+    to { opacity: 0; height: 0; padding: 0; overflow: hidden; }
+  }
+
+  .conn-bar input {
+    font-family: 'Roboto', sans-serif;
+    font-size: 13px;
+    padding: 4px 12px;
+    border: 1px solid #d4a574;
+    border-radius: 4px;
+    margin: 0 8px;
+    width: 260px;
+    background: white;
+  }
+  .conn-bar button {
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 16px;
+    border: none;
+    border-radius: 4px;
+    background: var(--crimson);
+    color: white;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+  .conn-bar button:hover { background: var(--crimson-dk); }
 
   /* ─── MAIN ─── */
   main { padding: 40px 0 60px; }
@@ -206,12 +263,25 @@
     line-height: 1.1;
     color: var(--black);
     margin-bottom: 8px;
+    transition: color 0.3s ease;
   }
   .card-price .unit {
     font-size: 24px;
     color: var(--gray-3);
     font-weight: 400;
   }
+
+  /* Flash animation on price update */
+  @keyframes flashGreen {
+    0% { color: var(--green); }
+    100% { color: var(--black); }
+  }
+  @keyframes flashRed {
+    0% { color: var(--red); }
+    100% { color: var(--black); }
+  }
+  .flash-up { animation: flashGreen 1.2s ease-out; }
+  .flash-down { animation: flashRed 1.2s ease-out; }
 
   .card-change {
     font-family: 'Roboto', sans-serif;
@@ -266,6 +336,7 @@
     border-radius: 3px;
     opacity: 0.25;
     background: var(--crimson);
+    transition: width 0.5s ease;
   }
   .range-marker {
     position: absolute;
@@ -276,6 +347,7 @@
     border: 2px solid var(--white);
     box-shadow: 0 0 0 1px var(--crimson);
     transform: translateX(-50%);
+    transition: left 0.5s ease;
   }
   .market-card.vol .range-fill,
   .market-card.vol .range-marker  { background: var(--amber); }
@@ -430,6 +502,7 @@
     .card-price { font-size: 32px; }
     .rate-value { font-size: 40px; }
     .rate-details { grid-template-columns: 1fr; }
+    .conn-bar input { width: 180px; }
   }
 </style>
 </head>
@@ -441,13 +514,22 @@
     <div class="header-top">Markets Overview</div>
     <h1>Financial Dashboard</h1>
     <div class="header-sub">
-      <span class="live-dot"></span>
+      <span class="live-dot connecting" id="statusDot"></span>
+      <span id="connectionLabel">Connecting…</span>
+      <span style="color:rgba(255,255,255,0.4);">·</span>
       <span id="dateDisplay"></span>
       <span style="color:rgba(255,255,255,0.4);">·</span>
-      <span style="color:rgba(255,255,255,0.5);">Snapshot data, may be delayed</span>
+      <span id="lastUpdate" style="color:rgba(255,255,255,0.5);">Waiting for data…</span>
     </div>
   </div>
 </header>
+
+<!-- ═══ API KEY BAR ═══ -->
+<div class="conn-bar needs-key" id="connBar">
+  Enter your free <a href="https://finnhub.io/register" target="_blank" style="color:inherit;text-decoration:underline;">Finnhub API key</a> to enable live data:
+  <input type="text" id="apiKeyInput" placeholder="paste your API key here…" spellcheck="false" autocomplete="off">
+  <button onclick="connectWithKey()">Connect</button>
+</div>
 
 <!-- ═══ MAIN ═══ -->
 <main>
@@ -457,44 +539,40 @@
     <div class="section-label">Equities, Volatility &amp; Futures</div>
     <div class="market-grid">
 
-      <!-- SPX -->
-      <div class="market-card equity">
+      <!-- SPY (proxy for SPX) -->
+      <div class="market-card equity" id="card-SPY">
         <div class="card-top">
-          <span class="card-symbol">SPX</span>
-          <span class="card-badge badge-equity">Index</span>
+          <span class="card-symbol">SPY</span>
+          <span class="card-badge badge-equity">S&P 500 ETF</span>
         </div>
-        <div class="card-name">S&P 500 Index</div>
-        <div class="card-price">6,781.48</div>
-        <div class="card-change chg-down">
-          <span>−11.37</span>
-          <span class="chg-pill">−0.17%</span>
-          <span class="card-context">Close · Mar 10</span>
+        <div class="card-name">SPDR S&P 500 ETF Trust</div>
+        <div class="card-price" id="price-SPY">—</div>
+        <div class="card-change" id="change-SPY">
+          <span>Waiting for data…</span>
         </div>
         <div class="range-bar-wrap">
           <div class="range-labels">
-            <span>52w Low: 4,835</span>
-            <span>52w High: 7,002</span>
+            <span id="range-low-SPY">52w Low: —</span>
+            <span id="range-high-SPY">52w High: —</span>
           </div>
           <div class="range-track">
-            <div class="range-fill" style="width:89.8%"></div>
-            <div class="range-marker" style="left:89.8%"></div>
+            <div class="range-fill" id="range-fill-SPY" style="width:0%"></div>
+            <div class="range-marker" id="range-marker-SPY" style="left:0%"></div>
           </div>
           <div class="range-caption">Current position in 52-week range</div>
         </div>
       </div>
 
-      <!-- VIX -->
-      <div class="market-card vol">
+      <!-- VIXY (proxy for VIX) -->
+      <div class="market-card vol" id="card-VIXY">
         <div class="card-top">
-          <span class="card-symbol">VIX</span>
-          <span class="card-badge badge-vol">Volatility</span>
+          <span class="card-symbol">VIXY</span>
+          <span class="card-badge badge-vol">Volatility ETF</span>
         </div>
-        <div class="card-name">CBOE Volatility Index</div>
-        <div class="card-price">24.93</div>
-        <div class="card-change chg-down">
-          <span>−0.57</span>
-          <span class="chg-pill">−2.24%</span>
-          <span class="card-context">Futures</span>
+        <div class="card-name">ProShares VIX Short-Term Futures ETF</div>
+        <div class="card-price" id="price-VIXY">—</div>
+        <div class="card-change" id="change-VIXY">
+          <span>Waiting for data…</span>
         </div>
         <div class="range-bar-wrap">
           <div class="range-labels">
@@ -502,119 +580,115 @@
             <span>Elevated fear</span>
           </div>
           <div class="range-track">
-            <div class="range-fill" style="width:50%"></div>
-            <div class="range-marker" style="left:50%"></div>
+            <div class="range-fill" id="range-fill-VIXY" style="width:0%"></div>
+            <div class="range-marker" id="range-marker-VIXY" style="left:0%"></div>
           </div>
-          <div class="range-caption">VIX above 20 signals heightened volatility</div>
+          <div class="range-caption">Relative volatility level</div>
         </div>
       </div>
 
-      <!-- S&P 500 E-mini Futures -->
-      <div class="market-card futures">
+      <!-- QQQ (Nasdaq proxy) -->
+      <div class="market-card futures" id="card-QQQ">
         <div class="card-top">
-          <span class="card-symbol">ES=F</span>
-          <span class="card-badge badge-futures">Futures</span>
+          <span class="card-symbol">QQQ</span>
+          <span class="card-badge badge-futures">Nasdaq ETF</span>
         </div>
-        <div class="card-name">S&P 500 E-mini Futures</div>
-        <div class="card-price">6,814.75</div>
-        <div class="card-change chg-up">
-          <span>+27.50</span>
-          <span class="chg-pill">+0.41%</span>
-          <span class="card-context">Overnight session</span>
+        <div class="card-name">Invesco QQQ Trust (Nasdaq-100)</div>
+        <div class="card-price" id="price-QQQ">—</div>
+        <div class="card-change" id="change-QQQ">
+          <span>Waiting for data…</span>
         </div>
         <div class="range-bar-wrap">
           <div class="range-labels">
-            <span>Prior close: 6,787.25</span>
-            <span>Session high</span>
+            <span id="range-low-QQQ">52w Low: —</span>
+            <span id="range-high-QQQ">52w High: —</span>
           </div>
           <div class="range-track">
-            <div class="range-fill" style="width:65%"></div>
-            <div class="range-marker" style="left:65%"></div>
+            <div class="range-fill" id="range-fill-QQQ" style="width:0%"></div>
+            <div class="range-marker" id="range-marker-QQQ" style="left:0%"></div>
           </div>
-          <div class="range-caption">Indicative pre-market direction</div>
+          <div class="range-caption">Current position in 52-week range</div>
         </div>
       </div>
 
-      <!-- 10-Year Treasury -->
-      <div class="market-card bond">
+      <!-- TLT (20+ Year Treasury Bond ETF) -->
+      <div class="market-card bond" id="card-TLT">
         <div class="card-top">
-          <span class="card-symbol">US10Y</span>
-          <span class="card-badge badge-bond">Treasury</span>
+          <span class="card-symbol">TLT</span>
+          <span class="card-badge badge-bond">Treasury ETF</span>
         </div>
-        <div class="card-name">10-Year Treasury Note Yield</div>
-        <div class="card-price">4.136<span class="unit">%</span></div>
-        <div class="card-change" style="color:var(--gray-2);">
-          <span>Yield to maturity</span>
-          <span class="card-context">CBOE · Mar 10</span>
+        <div class="card-name">iShares 20+ Year Treasury Bond ETF</div>
+        <div class="card-price" id="price-TLT">—</div>
+        <div class="card-change" id="change-TLT">
+          <span>Waiting for data…</span>
         </div>
         <div class="range-bar-wrap">
           <div class="range-labels">
-            <span>52w Low: ~3.60%</span>
-            <span>52w High: ~4.80%</span>
+            <span id="range-low-TLT">52w Low: —</span>
+            <span id="range-high-TLT">52w High: —</span>
           </div>
           <div class="range-track">
-            <div class="range-fill" style="width:44.7%"></div>
-            <div class="range-marker" style="left:44.7%"></div>
+            <div class="range-fill" id="range-fill-TLT" style="width:0%"></div>
+            <div class="range-marker" id="range-marker-TLT" style="left:0%"></div>
           </div>
-          <div class="range-caption">Current yield within trailing 52-week range</div>
+          <div class="range-caption">Current position in 52-week range (price, inverse to yield)</div>
         </div>
       </div>
 
-      <!-- 30-Year Treasury Bond -->
-      <div class="market-card bond">
+      <!-- IEF (7-10 Year Treasury) -->
+      <div class="market-card bond" id="card-IEF">
         <div class="card-top">
-          <span class="card-symbol">US30Y</span>
-          <span class="card-badge badge-bond">Treasury</span>
+          <span class="card-symbol">IEF</span>
+          <span class="card-badge badge-bond">Treasury ETF</span>
         </div>
-        <div class="card-name">30-Year Treasury Bond Yield</div>
-        <div class="card-price">4.800<span class="unit">%</span></div>
-        <div class="card-change" style="color:var(--gray-2);">
-          <span>Yield to maturity</span>
-          <span class="card-context">Mar 10</span>
+        <div class="card-name">iShares 7–10 Year Treasury Bond ETF</div>
+        <div class="card-price" id="price-IEF">—</div>
+        <div class="card-change" id="change-IEF">
+          <span>Waiting for data…</span>
         </div>
         <div class="range-bar-wrap">
           <div class="range-labels">
-            <span>52w Low: ~4.10%</span>
-            <span>52w High: ~5.15%</span>
+            <span id="range-low-IEF">52w Low: —</span>
+            <span id="range-high-IEF">52w High: —</span>
           </div>
           <div class="range-track">
-            <div class="range-fill" style="width:66.7%"></div>
-            <div class="range-marker" style="left:66.7%"></div>
+            <div class="range-fill" id="range-fill-IEF" style="width:0%"></div>
+            <div class="range-marker" id="range-marker-IEF" style="left:0%"></div>
           </div>
-          <div class="range-caption">Current yield within trailing 52-week range</div>
+          <div class="range-caption">Current position in 52-week range</div>
         </div>
       </div>
 
-      <!-- 4-Week Treasury Bill -->
-      <div class="market-card bond">
+      <!-- GLD (Gold) -->
+      <div class="market-card" id="card-GLD" style="--card-accent: #b45309;">
         <div class="card-top">
-          <span class="card-symbol">US4W</span>
-          <span class="card-badge badge-bond">T-Bill</span>
+          <span class="card-symbol">GLD</span>
+          <span class="card-badge" style="background:#fffbeb;color:#92400e;">Commodity</span>
         </div>
-        <div class="card-name">4-Week Treasury Bill Yield</div>
-        <div class="card-price">3.70<span class="unit">%</span></div>
-        <div class="card-change" style="color:var(--gray-2);">
-          <span>Coupon equivalent yield</span>
-          <span class="card-context">Mar 10</span>
+        <div class="card-name">SPDR Gold Shares ETF</div>
+        <div class="card-price" id="price-GLD">—</div>
+        <div class="card-change" id="change-GLD">
+          <span>Waiting for data…</span>
         </div>
         <div class="range-bar-wrap">
           <div class="range-labels">
-            <span>52w Low: ~3.10%</span>
-            <span>52w High: ~4.30%</span>
+            <span id="range-low-GLD">52w Low: —</span>
+            <span id="range-high-GLD">52w High: —</span>
           </div>
           <div class="range-track">
-            <div class="range-fill" style="width:50%"></div>
-            <div class="range-marker" style="left:50%"></div>
+            <div class="range-fill" id="range-fill-GLD" style="width:0%"></div>
+            <div class="range-marker" id="range-marker-GLD" style="left:0%"></div>
           </div>
-          <div class="range-caption">Near-cash rate; tracks fed funds closely</div>
+          <div class="range-caption">Current position in 52-week range</div>
         </div>
       </div>
 
     </div>
+
+    <!-- ── Central Bank Policy Rates (static — these don't change intraday) ── -->
     <div class="section-label">Central Bank Policy Rates</div>
     <div class="rate-grid">
 
-      <!-- Federal Reserve -->
       <div class="rate-card fed">
         <div class="rate-inst">Federal Reserve</div>
         <div class="rate-title">Federal Funds Rate</div>
@@ -649,7 +723,6 @@
         </div>
       </div>
 
-      <!-- ECB -->
       <div class="rate-card ecb">
         <div class="rate-inst">European Central Bank</div>
         <div class="rate-title">Main Refinancing Rate</div>
@@ -686,11 +759,10 @@
 
     </div>
 
-    <!-- ── Benchmark Reference Rates ── -->
+    <!-- ── Benchmark Reference Rates (static) ── -->
     <div class="section-label">Benchmark Reference Rates</div>
     <div class="rate-grid">
 
-      <!-- SOFR -->
       <div class="rate-card sofr">
         <div class="rate-inst">NY Federal Reserve</div>
         <div class="rate-title">SOFR — Secured Overnight Financing Rate</div>
@@ -714,11 +786,10 @@
             <span class="detail-label">Role</span>
             <span class="detail-value">Primary USD benchmark</span>
           </div>
-          <div class="detail-note">SOFR replaced USD LIBOR as the primary U.S. dollar benchmark rate. It is a broad measure of the cost of borrowing cash overnight collateralized by U.S. Treasury securities. CME Term SOFR extends this to 1-, 3-, 6-, and 12-month forward-looking tenors.</div>
+          <div class="detail-note">SOFR replaced USD LIBOR as the primary U.S. dollar benchmark rate. It is a broad measure of the cost of borrowing cash overnight collateralized by U.S. Treasury securities.</div>
         </div>
       </div>
 
-      <!-- LIBOR -->
       <div class="rate-card libor">
         <div class="rate-inst">ICE Benchmark Administration</div>
         <div class="rate-title">LIBOR — London Interbank Offered Rate</div>
@@ -742,7 +813,7 @@
             <span class="detail-label">Successor</span>
             <span class="detail-value">SOFR (USD) · SONIA (GBP)</span>
           </div>
-          <div class="detail-note">USD LIBOR ceased publication after September 30, 2024 — the final currency/tenor to be retired. Legacy contracts now reference SOFR-based fallback rates with fixed credit spread adjustments as specified by ISDA. No new LIBOR rates have been published since.</div>
+          <div class="detail-note">USD LIBOR ceased publication after September 30, 2024. Legacy contracts now reference SOFR-based fallback rates with fixed credit spread adjustments as specified by ISDA.</div>
         </div>
       </div>
 
@@ -755,17 +826,260 @@
 <footer class="site-footer">
   <div class="wrap">
     <div class="footer-inner">
-      <strong>Data as of March 10–11, 2026.</strong> Prices may be delayed. Not investment advice.<br>
-      Sources: FRED (St. Louis Fed), NY Fed, Federal Reserve H.15, ECB, CBOE, Yahoo Finance, CME FedWatch, SOFRRate.com.<br>
-      Design adapted from institutional identity guidelines.
+      <strong>Live data powered by <a href="https://finnhub.io" target="_blank" style="color:rgba(255,255,255,0.8);">Finnhub</a>.</strong> Prices may be delayed 15 min for some exchanges. Not investment advice.<br>
+      ETF proxies used: SPY (S&P 500), VIXY (VIX), QQQ (Nasdaq-100), TLT (20+yr Treasury), IEF (7-10yr Treasury), GLD (Gold).<br>
+      Central bank rates sourced from FRED, NY Fed, ECB. Policy rates are updated after official decisions only.
     </div>
   </div>
 </footer>
 
 <script>
-  const now = new Date();
-  document.getElementById('dateDisplay').textContent =
-    now.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+/* ════════════════════════════════════════════════════════════════
+   FINNHUB LIVE DATA ENGINE
+   - REST /quote for initial load + 52-week metrics
+   - WebSocket wss://ws.finnhub.io for real-time trade stream
+   - Automatic reconnect with exponential backoff
+   ════════════════════════════════════════════════════════════════ */
+
+const SYMBOLS = ['SPY', 'VIXY', 'QQQ', 'TLT', 'IEF', 'GLD'];
+const API_BASE = 'https://finnhub.io/api/v1';
+
+let API_KEY = localStorage.getItem('finnhub_key') || '';
+let ws = null;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+
+// State: track previous close + current price per symbol
+const state = {};
+SYMBOLS.forEach(s => {
+  state[s] = { price: null, prevClose: null, high52: null, low52: null, open: null, dayHigh: null, dayLow: null };
+});
+
+// ── DOM refs ──
+const statusDot = document.getElementById('statusDot');
+const connLabel = document.getElementById('connectionLabel');
+const connBar   = document.getElementById('connBar');
+const lastUpd   = document.getElementById('lastUpdate');
+
+// ── Date display ──
+document.getElementById('dateDisplay').textContent =
+  new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+// ── Init ──
+if (API_KEY) {
+  connBar.className = 'conn-bar'; // hide
+  connBar.style.display = 'none';
+  startDataFeed();
+} else {
+  setStatus('disconnected', 'No API key');
+  connBar.className = 'conn-bar needs-key';
+}
+
+function connectWithKey() {
+  const input = document.getElementById('apiKeyInput');
+  const key = input.value.trim();
+  if (!key) { input.focus(); return; }
+  API_KEY = key;
+  localStorage.setItem('finnhub_key', key);
+  connBar.className = 'conn-bar connected';
+  connBar.textContent = 'Key saved. Connecting…';
+  startDataFeed();
+}
+
+function setStatus(mode, label) {
+  statusDot.className = 'live-dot ' + (mode === 'live' ? '' : mode === 'connecting' ? 'connecting' : 'disconnected');
+  connLabel.textContent = label || '';
+}
+
+// ════════════════════════════
+// REST: Initial quote load
+// ════════════════════════════
+async function fetchQuote(symbol) {
+  try {
+    const res = await fetch(`${API_BASE}/quote?symbol=${symbol}&token=${API_KEY}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    // d = { c: current, d: change, dp: change%, h: high, l: low, o: open, pc: prev close, t: timestamp }
+    if (d.c) {
+      state[symbol].price = d.c;
+      state[symbol].prevClose = d.pc;
+      state[symbol].open = d.o;
+      state[symbol].dayHigh = d.h;
+      state[symbol].dayLow = d.l;
+      updateCard(symbol);
+    }
+  } catch (e) {
+    console.warn(`Quote fetch failed for ${symbol}:`, e);
+  }
+}
+
+async function fetchMetrics(symbol) {
+  try {
+    const res = await fetch(`${API_BASE}/stock/metric?symbol=${symbol}&metric=all&token=${API_KEY}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    const m = d.metric || {};
+    if (m['52WeekHigh']) state[symbol].high52 = m['52WeekHigh'];
+    if (m['52WeekLow'])  state[symbol].low52  = m['52WeekLow'];
+    updateRangeBar(symbol);
+  } catch (e) {
+    console.warn(`Metrics fetch failed for ${symbol}:`, e);
+  }
+}
+
+async function loadInitialData() {
+  setStatus('connecting', 'Loading quotes…');
+  // Stagger requests to respect 60/min rate limit
+  for (const sym of SYMBOLS) {
+    fetchQuote(sym);
+    fetchMetrics(sym);
+    await sleep(200);
+  }
+}
+
+// ════════════════════════════
+// WebSocket: Real-time trades
+// ════════════════════════════
+function connectWebSocket() {
+  if (ws) { try { ws.close(); } catch(e){} }
+
+  setStatus('connecting', 'Connecting WebSocket…');
+  ws = new WebSocket(`wss://ws.finnhub.io?token=${API_KEY}`);
+
+  ws.onopen = () => {
+    reconnectAttempts = 0;
+    setStatus('live', 'Live');
+    // Subscribe to all symbols
+    SYMBOLS.forEach(s => {
+      ws.send(JSON.stringify({ type: 'subscribe', symbol: s }));
+    });
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'trade' && msg.data && msg.data.length > 0) {
+        // Process trades — take the last trade per symbol in this batch
+        const bySymbol = {};
+        msg.data.forEach(trade => {
+          bySymbol[trade.s] = trade;
+        });
+        Object.entries(bySymbol).forEach(([sym, trade]) => {
+          if (state[sym]) {
+            const oldPrice = state[sym].price;
+            state[sym].price = trade.p;
+            updateCard(sym, oldPrice);
+            // Update day high/low
+            if (!state[sym].dayHigh || trade.p > state[sym].dayHigh) state[sym].dayHigh = trade.p;
+            if (!state[sym].dayLow  || trade.p < state[sym].dayLow)  state[sym].dayLow  = trade.p;
+          }
+        });
+        lastUpd.textContent = 'Last tick: ' + new Date().toLocaleTimeString();
+      }
+    } catch (e) {
+      console.warn('WS parse error:', e);
+    }
+  };
+
+  ws.onerror = (err) => {
+    console.warn('WebSocket error:', err);
+  };
+
+  ws.onclose = (event) => {
+    setStatus('disconnected', 'Disconnected');
+    // Check if it was an auth error (code 403)
+    if (event.code === 4003 || event.code === 403) {
+      connBar.className = 'conn-bar error';
+      connBar.innerHTML = 'Invalid API key. Please <a href="https://finnhub.io/register" target="_blank" style="color:inherit;text-decoration:underline;">get a free key</a> and reload.';
+      return;
+    }
+    // Exponential backoff reconnect
+    reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+    setStatus('connecting', `Reconnecting in ${Math.round(delay/1000)}s…`);
+    reconnectTimer = setTimeout(connectWebSocket, delay);
+  };
+}
+
+function startDataFeed() {
+  loadInitialData();
+  connectWebSocket();
+  // Refresh quotes every 60s as fallback
+  setInterval(() => {
+    SYMBOLS.forEach(s => fetchQuote(s));
+  }, 60000);
+}
+
+// ════════════════════════════
+// UI Update Functions
+// ════════════════════════════
+function updateCard(symbol, oldPrice) {
+  const s = state[symbol];
+  if (!s.price) return;
+
+  const priceEl = document.getElementById(`price-${symbol}`);
+  const changeEl = document.getElementById(`change-${symbol}`);
+
+  // Format price
+  const decimals = s.price > 500 ? 2 : s.price > 10 ? 2 : 3;
+  priceEl.textContent = s.price.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+  // Flash animation
+  if (oldPrice && oldPrice !== s.price) {
+    priceEl.classList.remove('flash-up', 'flash-down');
+    void priceEl.offsetWidth; // force reflow
+    priceEl.classList.add(s.price > oldPrice ? 'flash-up' : 'flash-down');
+  }
+
+  // Change from prev close
+  if (s.prevClose) {
+    const chg = s.price - s.prevClose;
+    const chgPct = (chg / s.prevClose) * 100;
+    const isUp = chg >= 0;
+    const sign = isUp ? '+' : '−';
+    const absChg = Math.abs(chg).toFixed(2);
+    const absPct = Math.abs(chgPct).toFixed(2);
+
+    changeEl.className = `card-change ${isUp ? 'chg-up' : 'chg-down'}`;
+    changeEl.innerHTML = `
+      <span>${sign}${absChg}</span>
+      <span class="chg-pill">${sign}${absPct}%</span>
+      <span class="card-context">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+    `;
+  }
+
+  updateRangeBar(symbol);
+}
+
+function updateRangeBar(symbol) {
+  const s = state[symbol];
+  if (!s.price) return;
+
+  // Update range labels if we have 52w data
+  if (s.low52 && s.high52) {
+    const lowEl = document.getElementById(`range-low-${symbol}`);
+    const highEl = document.getElementById(`range-high-${symbol}`);
+    if (lowEl) lowEl.textContent = `52w Low: ${s.low52.toFixed(2)}`;
+    if (highEl) highEl.textContent = `52w High: ${s.high52.toFixed(2)}`;
+
+    const range = s.high52 - s.low52;
+    if (range > 0) {
+      const pct = Math.max(0, Math.min(100, ((s.price - s.low52) / range) * 100));
+      const fillEl = document.getElementById(`range-fill-${symbol}`);
+      const markerEl = document.getElementById(`range-marker-${symbol}`);
+      if (fillEl) fillEl.style.width = pct + '%';
+      if (markerEl) markerEl.style.left = pct + '%';
+    }
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if (ws) ws.close();
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+});
 </script>
 
 </body>

@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     await Promise.all(requested.map(async (symbol) => {
       try {
         const encoded = encodeURIComponent(symbol);
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?range=5d&interval=1d&includePrePost=false`;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?range=1d&interval=1m&includePrePost=false`;
         
         const resp = await fetch(url, {
           headers: {

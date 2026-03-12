@@ -8,11 +8,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Symbols we support — all Yahoo Finance index tickers
-  const ALLOWED = ['^GSPC', '^VIX', '^TNX', '^TYX', '^IRX', '^DJI', '^IXIC', '^RUT'];
+  // Symbols we support — all Yahoo Finance index tickers + ES=F futures
+  const ALLOWED = ['^GSPC', '^VIX', '^TNX', '^TYX', '^IRX', '^DJI', '^IXIC', '^RUT', 'ES=F'];
   
   // Accept ?symbols=^GSPC,^VIX,^TNX  (comma-separated)
-  const raw = req.query.symbols || '^GSPC,^VIX,^TNX,^TYX,^IRX';
+  const raw = req.query.symbols || '^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F';
   const requested = raw.split(',').map(s => s.trim()).filter(s => ALLOWED.includes(s));
 
   if (requested.length === 0) {

@@ -6,13 +6,6 @@
 <title>Markets Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  /* ═══════════════════════════════════════════════════════
-     MARKETS DASHBOARD — CLEAN INSTITUTIONAL DESIGN
-     Fonts:   Roboto (UI/wayfinding) + Crimson Text (body/display)
-     Colors:  Navy #1a3a6b, white #fff, near-black #1a1a1a
-     WCAG AA throughout; left-aligned; generous spacing
-  ═══════════════════════════════════════════════════════ */
-
   :root {
     --crimson:     #1a3a6b;
     --crimson-dk:  #112a4f;
@@ -61,7 +54,6 @@
     outline-offset: 2px;
   }
 
-  /* ─── HEADER ─── */
   .site-header {
     background: var(--crimson);
     border-bottom: 4px solid var(--crimson-dk);
@@ -108,8 +100,11 @@
   }
   .live-dot.disconnected { background: #ef4444; animation: none; }
   .live-dot.connecting   { background: #fbbf24; }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
 
-  /* ─── MAIN ─── */
   main { padding: 40px 0 60px; }
 
   .section-label {
@@ -124,7 +119,6 @@
     border-bottom: 2px solid var(--gray-5);
   }
 
-  /* ─── MARKET CARDS ─── */
   .market-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -230,7 +224,6 @@
     margin-left: auto;
   }
 
-  /* Range bar */
   .range-bar-wrap {
     margin-top: 18px;
     padding-top: 14px;
@@ -287,7 +280,6 @@
     letter-spacing: 0.1em;
   }
 
-  /* ─── RATE CARDS ─── */
   .rate-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -383,7 +375,6 @@
     border-top: 1px dashed var(--gray-5);
   }
 
-  /* ─── FOOTER ─── */
   .site-footer {
     background: var(--black);
     color: rgba(255,255,255,0.55);
@@ -396,7 +387,6 @@
   }
   .footer-inner strong { color: rgba(255,255,255,0.8); }
 
-  /* ─── RESPONSIVE ─── */
   @media (max-width: 800px) {
     .market-grid, .rate-grid { grid-template-columns: 1fr; }
     .wrap { padding: 0 20px; }
@@ -409,7 +399,6 @@
 </head>
 <body>
 
-<!-- ═══ HEADER ═══ -->
 <header class="site-header">
   <div class="wrap">
     <div class="header-top">Markets Overview</div>
@@ -425,11 +414,9 @@
   </div>
 </header>
 
-<!-- ═══ MAIN ═══ -->
 <main>
   <div class="wrap">
 
-    <!-- ── Equities, Volatility & Futures ── -->
     <div class="section-label">Equities, Volatility &amp; Futures</div>
     <div class="market-grid">
 
@@ -588,11 +575,9 @@
 
     </div>
 
-    <!-- ── Central Bank Policy Rates (static — change only at meetings) ── -->
     <div class="section-label">Central Bank Policy Rates</div>
     <div class="rate-grid">
 
-      <!-- Federal Reserve -->
       <div class="rate-card fed">
         <div class="rate-inst">Federal Reserve</div>
         <div class="rate-title">Federal Funds Rate</div>
@@ -609,7 +594,6 @@
         </div>
       </div>
 
-      <!-- ECB -->
       <div class="rate-card ecb">
         <div class="rate-inst">European Central Bank</div>
         <div class="rate-title">Main Refinancing Rate</div>
@@ -628,11 +612,9 @@
 
     </div>
 
-    <!-- ── Benchmark Reference Rates (static) ── -->
     <div class="section-label">Benchmark Reference Rates</div>
     <div class="rate-grid">
 
-      <!-- SOFR -->
       <div class="rate-card sofr">
         <div class="rate-inst">NY Federal Reserve</div>
         <div class="rate-title">SOFR — Secured Overnight Financing Rate</div>
@@ -648,7 +630,6 @@
         </div>
       </div>
 
-      <!-- LIBOR -->
       <div class="rate-card libor">
         <div class="rate-inst">ICE Benchmark Administration</div>
         <div class="rate-title">LIBOR — London Interbank Offered Rate</div>
@@ -669,12 +650,11 @@
   </div>
 </main>
 
-<!-- ═══ FOOTER ═══ -->
 <footer class="site-footer">
   <div class="wrap">
     <div class="footer-inner">
       <strong>Live data powered by Yahoo Finance.</strong> Prices may be delayed. Not investment advice. Refreshes every 30 seconds.<br>
-      Index data: ^GSPC (SPX), ^VIX, ^TNX (10Y yield), ^TYX (30Y yield), ^IRX (4W yield). Policy rates from FRED, NY Fed, ECB.<br>
+      Index data: ^GSPC (SPX), ^VIX, ^TNX (10Y yield), ^TYX (30Y yield), ^IRX (4W yield), ES=F (E-mini futures). Policy rates from FRED, NY Fed, ECB.<br>
       Sources: Yahoo Finance, FRED (St. Louis Fed), NY Fed, Federal Reserve H.15, ECB, CBOE, CME FedWatch, SOFRRate.com.
     </div>
   </div>
@@ -690,7 +670,7 @@
    Card mapping:
      SPX   → ^GSPC   (S&P 500 Index)
      VIX   → ^VIX    (CBOE Volatility Index)
-     ES    → ^GSPC   (mirrors SPX — true futures not on Yahoo free)
+     ES    → ES=F    (E-mini S&P 500 Futures)
      US10Y → ^TNX    (10-Year Treasury Yield)
      US30Y → ^TYX    (30-Year Treasury Yield)
      US4W  → ^IRX    (13-Week Treasury Bill Yield)
@@ -699,7 +679,7 @@
 const CARD_MAP = {
   SPX:   { yf: '^GSPC', isYield: false },
   VIX:   { yf: '^VIX',  isYield: false },
-  ES:    { yf: '^GSPC', isYield: false },
+  ES:    { yf: 'ES=F',  isYield: false },
   US10Y: { yf: '^TNX',  isYield: true  },
   US30Y: { yf: '^TYX',  isYield: true  },
   US4W:  { yf: '^IRX',  isYield: true  },

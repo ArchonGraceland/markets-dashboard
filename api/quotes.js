@@ -8,9 +8,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const ALLOWED = ['^GSPC', '^VIX', '^TNX', '^TYX', '^IRX', '^DJI', '^IXIC', '^RUT', 'ES=F', 'BZ=F'];
+  const ALLOWED = ['^GSPC', '^VIX', '^TNX', '^TYX', '^IRX', '^DJI', '^IXIC', '^RUT', 'ES=F', 'BZ=F', 'CL=F'];
 
-  const raw = req.query.symbols || '^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F,BZ=F';
+  const raw = req.query.symbols || '^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F,BZ=F,CL=F';
   const requested = raw.split(',').map(s => s.trim()).filter(s => ALLOWED.includes(s));
 
   if (requested.length === 0) {

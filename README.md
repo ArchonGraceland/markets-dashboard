@@ -1,8 +1,8 @@
 # Markets Dashboard
 
-A real-time financial markets dashboard showing U.S. equity indices, Treasury yields, volatility, E-mini futures, central bank policy rates, and benchmark reference rates. Built as a single-page static site with a Vercel serverless proxy for Yahoo Finance data.
+A real-time financial markets dashboard showing U.S. equity indices, Treasury yields, volatility, E-mini futures, crude oil, and central bank policy rates. Built as a single-page static site with a Vercel serverless proxy for Yahoo Finance data.
 
-**Live site:** [markets-dashboard-phi.vercel.app](https://markets-dashboard-phi.vercel.app/)
+**Live site:** [markets-dashboard-nine.vercel.app](https://markets-dashboard-nine.vercel.app/)
 
 ## What it shows
 
@@ -12,10 +12,10 @@ A real-time financial markets dashboard showing U.S. equity indices, Treasury yi
 - **10-Year Treasury Yield** (^TNX) — benchmark long-term rate
 - **30-Year Treasury Yield** (^TYX) — long bond yield
 - **4-Week Treasury Bill Yield** (^IRX) — near-cash rate
+- **Brent Crude Oil Futures** (BZ=F) — international oil benchmark
+- **WTI Crude Oil Futures** (CL=F) — U.S. oil benchmark
 - **Federal Funds Rate** — Fed policy rate (static, updated after FOMC meetings)
 - **ECB Main Refinancing Rate** — European policy rate (static)
-- **SOFR** — primary USD overnight benchmark rate (static)
-- **LIBOR** — discontinued fallback rate (static, for reference)
 
 ## Architecture
 
@@ -25,6 +25,8 @@ markets-dashboard/
 ├── api/
 │   └── quotes.js       # Vercel serverless function (Yahoo Finance proxy)
 ├── .gitignore
+├── README.md
+├── SPECS.md
 └── package-lock.json
 ```
 
@@ -35,7 +37,7 @@ The serverless function (`api/quotes.js`) exists because Yahoo Finance blocks br
 ## Data flow
 
 1. Browser loads `index.html` — cards show "—" placeholders
-2. JavaScript calls `/api/quotes?symbols=^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F`
+2. JavaScript calls `/api/quotes?symbols=^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F,BZ=F,CL=F`
 3. Serverless function fetches Yahoo Finance v6 quote API (real-time prices)
 4. If v6 fails for any symbol, falls back to v8 chart API (1-minute candles)
 5. Response cached at Vercel edge for 15 seconds
@@ -104,9 +106,9 @@ Returns real-time quotes from Yahoo Finance.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `symbols` | `^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F` | Comma-separated Yahoo Finance symbols |
+| `symbols` | `^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F,BZ=F,CL=F` | Comma-separated Yahoo Finance symbols |
 
-**Allowed symbols:** `^GSPC`, `^VIX`, `^TNX`, `^TYX`, `^IRX`, `^DJI`, `^IXIC`, `^RUT`, `ES=F`
+**Allowed symbols:** `^GSPC`, `^VIX`, `^TNX`, `^TYX`, `^IRX`, `^DJI`, `^IXIC`, `^RUT`, `ES=F`, `BZ=F`, `CL=F`
 
 **Example response:**
 
@@ -133,7 +135,7 @@ Returns real-time quotes from Yahoo Finance.
 
 ## Static sections
 
-The central bank rates (Fed, ECB) and benchmark reference rates (SOFR, LIBOR) are hardcoded in `index.html` and do not update automatically. These change only at scheduled policy meetings and should be manually updated when decisions are announced.
+The central bank rates (Fed, ECB) are hardcoded in `index.html` and do not update automatically. These change only at scheduled policy meetings and should be manually updated when decisions are announced.
 
 ## Design
 

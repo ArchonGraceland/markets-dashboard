@@ -327,7 +327,6 @@
   }
   .rate-card.fed    .rate-value { color: var(--fed-red); }
   .rate-card.ecb    .rate-value { color: var(--blue); }
-  .rate-card.sofr   .rate-value { color: var(--teal); }
   .rate-range {
     font-family: 'Roboto', sans-serif;
     font-size: 14px;
@@ -347,7 +346,6 @@
   }
   .rate-card.fed   .rate-status { background: var(--fed-red-bg); color: var(--fed-red); }
   .rate-card.ecb   .rate-status { background: var(--blue-bg);    color: var(--blue); }
-  .rate-card.sofr  .rate-status { background: var(--teal-bg);    color: var(--teal); }
   .rate-details {
     border-top: 1px solid var(--gray-5);
     padding-top: 20px;
@@ -593,6 +591,30 @@
         </div>
       </div>
 
+      <!-- WTI Crude Oil -->
+      <div class="market-card commodity" data-card="WTI">
+        <div class="card-top">
+          <span class="card-symbol">CL=F</span>
+          <span class="card-badge badge-commodity">Commodity</span>
+        </div>
+        <div class="card-name">WTI Crude Oil Futures</div>
+        <div class="card-price" data-price="WTI">—</div>
+        <div class="card-change" data-change="WTI" style="color:var(--gray-4);">
+          <span>Waiting for data…</span>
+        </div>
+        <div class="range-bar-wrap">
+          <div class="range-labels">
+            <span data-rlo="WTI">52w Low: —</span>
+            <span data-rhi="WTI">52w High: —</span>
+          </div>
+          <div class="range-track">
+            <div class="range-fill" data-rfill="WTI" style="width:0%"></div>
+            <div class="range-marker" data-rmark="WTI" style="left:0%"></div>
+          </div>
+          <div class="range-caption">Front-month WTI crude contract</div>
+        </div>
+      </div>
+
     </div>
 
     <div class="section-label">Central Bank Policy Rates</div>
@@ -632,26 +654,6 @@
 
     </div>
 
-    <div class="section-label">Benchmark Reference Rates</div>
-    <div class="rate-grid">
-
-      <div class="rate-card sofr">
-        <div class="rate-inst">NY Federal Reserve</div>
-        <div class="rate-title">SOFR — Secured Overnight Financing Rate</div>
-        <div class="rate-status">Active Benchmark</div>
-        <div class="rate-value">3.65%</div>
-        <div class="rate-range">Overnight rate · Published daily ~8:00 AM ET</div>
-        <div class="rate-details">
-          <div class="detail-item"><span class="detail-label">As Of</span><span class="detail-value">Mar 10, 2026</span></div>
-          <div class="detail-item"><span class="detail-label">30-Day Avg</span><span class="detail-value">3.65% (Mar 9)</span></div>
-          <div class="detail-item"><span class="detail-label">Basis</span><span class="detail-value">Treasury repo transactions</span></div>
-          <div class="detail-item"><span class="detail-label">Role</span><span class="detail-value">Primary USD benchmark</span></div>
-          <div class="detail-note">SOFR replaced USD LIBOR as the primary U.S. dollar benchmark rate. It is a broad measure of the cost of borrowing cash overnight collateralized by U.S. Treasury securities. CME Term SOFR extends this to 1-, 3-, 6-, and 12-month forward-looking tenors.</div>
-        </div>
-      </div>
-
-    </div>
-
   </div>
 </main>
 
@@ -659,8 +661,8 @@
   <div class="wrap">
     <div class="footer-inner">
       <strong>Live data powered by Yahoo Finance.</strong> Prices may be delayed. Not investment advice. Refreshes every 30 seconds.<br>
-      Index data: ^GSPC (SPX), ^VIX, ^TNX (10Y yield), ^TYX (30Y yield), ^IRX (4W yield), ES=F (E-mini futures), BZ=F (Brent crude). Policy rates from FRED, NY Fed, ECB.<br>
-      Sources: Yahoo Finance, FRED (St. Louis Fed), NY Fed, Federal Reserve H.15, ECB, CBOE, CME FedWatch, SOFRRate.com.
+      Index data: ^GSPC (SPX), ^VIX, ^TNX (10Y yield), ^TYX (30Y yield), ^IRX (4W yield), ES=F (E-mini futures), BZ=F (Brent crude), CL=F (WTI crude). Policy rates from FRED, NY Fed, ECB.<br>
+      Sources: Yahoo Finance, FRED (St. Louis Fed), NY Fed, Federal Reserve H.15, ECB, CBOE, CME FedWatch.
     </div>
   </div>
 </footer>
@@ -689,6 +691,7 @@ const CARD_MAP = {
   US30Y: { yf: '^TYX',  isYield: true  },
   US4W:  { yf: '^IRX',  isYield: true  },
   BRENT: { yf: 'BZ=F',  isYield: false },
+  WTI:   { yf: 'CL=F',  isYield: false },
 };
 
 // State per card

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-A single-page financial dashboard that displays near-real-time U.S. market data alongside static central bank policy rates. Deployed on Vercel as a static site with one serverless function.
+A single-page financial dashboard that displays near-real-time U.S. market data (equities, volatility, futures, treasuries, crude oil) alongside static central bank policy rates. Deployed on Vercel as a static site with one serverless function.
 
 ## 2. System requirements
 
@@ -36,12 +36,12 @@ Proxies Yahoo Finance because the browser cannot call Yahoo directly (CORS block
 ### 4.2 Request
 
 ```
-GET /api/quotes?symbols=^GSPC,^VIX,ES=F
+GET /api/quotes?symbols=^GSPC,^VIX,ES=F,BZ=F,CL=F
 ```
 
 - Method: GET only (405 for others)
 - `symbols`: comma-separated list from the allowlist
-- Default: `^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F`
+- Default: `^GSPC,^VIX,^TNX,^TYX,^IRX,ES=F,BZ=F,CL=F`
 
 ### 4.3 Symbol allowlist
 
@@ -53,6 +53,8 @@ GET /api/quotes?symbols=^GSPC,^VIX,ES=F
 | `^TNX` | 10-Year Treasury Yield | US10Y |
 | `^TYX` | 30-Year Treasury Yield | US30Y |
 | `^IRX` | 13-Week T-Bill Yield | US4W |
+| `BZ=F` | Brent Crude Oil Futures | BRENT |
+| `CL=F` | WTI Crude Oil Futures | WTI |
 | `^DJI` | Dow Jones Industrial Average | (reserved) |
 | `^IXIC` | Nasdaq Composite | (reserved) |
 | `^RUT` | Russell 2000 | (reserved) |
@@ -126,6 +128,8 @@ const CARD_MAP = {
   US10Y: { yf: '^TNX',  isYield: true  },
   US30Y: { yf: '^TYX',  isYield: true  },
   US4W:  { yf: '^IRX',  isYield: true  },
+  BRENT: { yf: 'BZ=F',  isYield: false },
+  WTI:   { yf: 'CL=F',  isYield: false },
 };
 ```
 
@@ -137,7 +141,7 @@ const CARD_MAP = {
 
 ### 5.4 Rendering logic
 
-**Equity/Vol/Futures cards** (`isYield: false`):
+**Equity/Vol/Futures/Commodity cards** (`isYield: false`):
 - Price displayed with 2 decimal places, comma-separated thousands
 - Change shown as absolute value and percentage with +/− prefix
 - Green for positive, red for negative
@@ -155,7 +159,7 @@ All cards show "—" as the price and "Waiting for data…" as the change text u
 
 ## 6. Dashboard sections
 
-### 6.1 Equities, Volatility & Futures (live)
+### 6.1 Equities, Volatility, Futures & Commodities (live)
 
 | Card | Symbol | Type | Badge | Left border |
 |------|--------|------|-------|-------------|
@@ -165,6 +169,8 @@ All cards show "—" as the price and "Waiting for data…" as the change text u
 | 10-Year Treasury Yield | ^TNX | bond | Treasury (green) | Green |
 | 30-Year Treasury Yield | ^TYX | bond | Treasury (green) | Green |
 | 4-Week T-Bill Yield | ^IRX | bond | T-Bill (green) | Green |
+| Brent Crude Oil Futures | BZ=F | commodity | Commodity (oil) | Oil brown |
+| WTI Crude Oil Futures | CL=F | commodity | Commodity (oil) | Oil brown |
 
 Each card displays: symbol badge, full name, current price, change (absolute + percent), timestamp, and a 52-week range bar.
 
@@ -178,17 +184,6 @@ Each card displays: symbol badge, full name, current price, change (absolute + p
 Each card displays: institution label, rate name, status badge, headline rate, rate range/details, and a 2-column detail grid with last decision, next meeting, inflation data, and market expectations.
 
 **Update cadence:** Manual edit of `index.html` after each FOMC or ECB meeting.
-
-### 6.3 Benchmark Reference Rates (static)
-
-| Card | Administrator | Current value |
-|------|---------------|---------------|
-| SOFR | NY Federal Reserve | 3.65% |
-| LIBOR | ICE Benchmark Administration | 3.656% (fallback) |
-
-Each card displays: administrator label, rate name, status badge, rate value, description, and a detail grid with publication date, basis, role, and explanatory note.
-
-**Update cadence:** SOFR — manually after daily NY Fed publication. LIBOR — rarely (discontinued, fallback rate only).
 
 ## 7. Design system
 
@@ -210,8 +205,7 @@ Each card displays: administrator label, rate name, status badge, rate value, de
 | Red | #991b1b | Negative change |
 | Amber | #92400e | Volatility accent |
 | Blue | #2563eb | Futures accent, ECB |
-| Teal | #115e59 | SOFR accent |
-| Purple | #5b21b6 | LIBOR accent |
+| Oil brown | #854d0e | Commodity accent |
 | Fed red | #9f1239 | Federal Reserve accent |
 
 ### 7.3 Layout
@@ -231,9 +225,9 @@ Each card displays: administrator label, rate name, status badge, rate value, de
 ## 8. Known limitations
 
 - **Yahoo Finance rate limits:** No official API key; relies on unofficial endpoints that may change or throttle without notice.
-- **Futures contract rollover:** `ES=F` points to the front-month contract. Near expiration (quarterly), the symbol automatically rolls to the next contract. Settlement date for current contract: 2026-03-20.
+- **Futures contract rollover:** `ES=F`, `BZ=F`, and `CL=F` point to the front-month contract. Near expiration, the symbol automatically rolls to the next contract.
 - **No WebSocket:** Polling-based (30s intervals), not streaming. Prices may lag by up to 30 seconds plus Yahoo's own delay.
-- **Static policy rates:** Fed, ECB, SOFR, and LIBOR values require manual HTML edits.
+- **Static policy rates:** Fed and ECB values require manual HTML edits.
 - **No error recovery UI:** If the API returns errors persistently, cards remain in their last known state with no user-facing error message beyond the header status dot turning red.
 - **Single file:** All HTML, CSS, and JS in one file. Fine for current scope but would benefit from separation if the project grows.
 
@@ -243,7 +237,14 @@ Each card displays: administrator label, rate name, status badge, rate value, de
 - Auto-update policy rates from FRED API
 - Add DJI, Nasdaq, Russell 2000 cards (symbols already in allowlist)
 - Add currency pairs (DXY, EUR/USD)
-- Add commodity prices (crude oil, gold)
+- Add more commodity prices (gold, natural gas)
 - Historical sparkline charts in cards
 - Dark mode toggle
 - Service worker for offline static content
+
+## 10. Changelog
+
+| Date | Change |
+|------|--------|
+| Mar 16, 2026 | Removed LIBOR card and Benchmark Reference Rates section (SOFR). Added Brent Crude Oil (BZ=F) and WTI Crude Oil (CL=F) as live market cards with commodity styling. |
+| Mar 10–11, 2026 | Initial live deployment with 6 market cards, 2 central bank rates, SOFR, and LIBOR. |

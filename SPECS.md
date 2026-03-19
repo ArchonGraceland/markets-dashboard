@@ -181,7 +181,9 @@ Each card displays: symbol badge, full name, current price, change (absolute + p
 | Federal Funds Rate | Federal Reserve | 3.64% (range 3.50–3.75%) |
 | Main Refinancing Rate | ECB | 2.15% |
 
-Each card displays: institution label, rate name, status badge, headline rate, rate range/details, and a 2-column detail grid with last decision, next meeting, inflation data, and market expectations.
+**Fed card detail fields:** Last Decision, Next Meeting, 2025 Action, Dot Plot (median rate path), Chair, Inflation (PCE projection).
+
+**ECB card detail fields:** Last Decision, Next Meeting, EZ Inflation, Market Expectation, Core Inflation, President.
 
 **Update cadence:** Manual edit of `index.html` after each FOMC or ECB meeting.
 
@@ -246,5 +248,6 @@ Each card displays: institution label, rate name, status badge, headline rate, r
 
 | Date | Change |
 |------|--------|
+| Mar 19, 2026 | Updated Fed card for March 18 FOMC decision: hold at 3.50–3.75% (11-1 vote). Updated detail fields to show dot plot median (1 cut in '26, 1 in '27), PCE inflation projection (2.7% for 2026), next meeting (Apr 28–29). Replaced "Market Expectation" field with "Dot Plot" and "Inflation" with "Inflation (PCE)". |
 | Mar 16, 2026 | Removed LIBOR card and Benchmark Reference Rates section (SOFR). Added Brent Crude Oil (BZ=F) and WTI Crude Oil (CL=F) as live market cards with commodity styling. |
 | Mar 10–11, 2026 | Initial live deployment with 6 market cards, 2 central bank rates, SOFR, and LIBOR. |
